@@ -17,9 +17,9 @@ lines = bdf.readlines()
 #compressCharFW = 
 downhang = 1
 
-bitmapData = "const uint8_t " + fontname + "_Bitmap[] PROGMEM = {\r\n\t// Bitmap Data:"     
+bitmapData = "const uint8_t " + fontname + "_Bitmap[] PROGMEM = {\n\t// Bitmap Data:"     
 #Cache for the first array in the H file
-indexData = "const GFXglyph " + fontname + "_Glyphs[] PROGMEM = {\r\n	// bitmap  wid  hei  x    x    y\r\n  // Offset, th , ght, Adv, Ofs, Ofs"      
+indexData = "const GFXglyph " + fontname + "_Glyphs[] PROGMEM = {\n	// bitmap  wid  hei  x    x    y\n  // Offset, th , ght, Adv, Ofs, Ofs"      
 #Cache for the second array in the H file
 
 onBitmapLine = 0
@@ -43,6 +43,7 @@ BBX_x = 0
 BBX_y = 0
 
 binaryChar = ""
+fillCharUsed = False
 
 for line in lines:
     if getpixsize.match(line):
@@ -54,7 +55,8 @@ for line in lines:
             firstcharnum = oldcharnum = charnum
         if oldcharnum != charnum:
             for i in range(int(oldcharnum)+1, int(charnum)):       #fill gap between non-consecutive chars
-                indexData += "\r\n\t{ RPLCEwithpropsoffillchar }, // " + str(i)
+                indexData += "\n\t{ RPLCEwithpropsoffillchar }, // " + str(i)
+                fillCharUsed = True
             oldcharnum = charnum
         
     
@@ -75,7 +77,7 @@ for line in lines:
     else:
         if endBitmap.match(line):
             if onBitmapLine != 0:  #We just finished reading a bitmap. Dump the binary cache!
-                bitmapData += "\r\n\t"
+                bitmapData += "\n\t"
                 numbytes = int((len(binaryChar)+7)/8)    #How many bytes are required to store this bitmap?
                 #for i in range(0, len(binaryChar) % 8)
                 #    binaryChar += '0'                            #right-pad with zeros to finish a byte
@@ -86,7 +88,7 @@ for line in lines:
                     bitmapData += ", "
                 bitmapData += "// " + charName
                                     #      bitmapOffset, width, height, xAdvance, xOffset, yOffset
-                indexData += "\r\n\t{   "
+                indexData += "\n\t{   "
                 indexData += str(binaryIndex).rjust(3, ' ') + ", "      #bitmapOffset
                 indexData += str(BBX_w).rjust(3, ' ') + ", "      #width
                 indexData += str(BBX_h).rjust(3, ' ') + ", "      #height
@@ -107,10 +109,12 @@ for line in lines:
                
                 #converts hex to binary with left-pad zeros, ltrimmed to BBX_w
 
-bitmapData += "\r\n};"
-indexData += "\r\n};"
+bitmapData += "\n};"
+indexData += "\n};"
 
 hfile = open(fontname + ".h", 'w')
-hfile.write(bitmapData + "\r\n\r\n" + indexData + "\r\nconst GFXfont " + fontname + " PROGMEM = {\r\n(uint8_t  *)" + fontname + "_Bitmap,(GFXglyph *)" + fontname + "_Glyphs, " + firstcharnum + ", " + charnum + ", " + pixsize + "};"
-)
+hfile.write(bitmapData + "\n\n" + indexData + "\nconst GFXfont " + fontname + " PROGMEM = {\n(uint8_t  *)" + fontname + "_Bitmap,(GFXglyph *)" + fontname + "_Glyphs, " + str(firstcharnum) + ", " + str(charnum) + ", " + pixsize + "};")
 
+print("Your font has been saved as " + fontname + ".h")
+if fillCharUsed == True:
+    print('Your character range is non-consecutive. You need to open the .h file and\n replace "RPLCEwithpropsoffillchar" with the properties (6 numbers)\n of the character you wish to use for the invalid codepoints.')
